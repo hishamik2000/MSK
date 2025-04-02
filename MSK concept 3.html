@@ -1,0 +1,619 @@
+Okay, Dr. AlKhatib, let's implement Concept 3: The Card Grid Layout with Modals.
+
+In this version:
+
+The main area displays DDx items as individual "cards" arranged in a responsive grid.
+
+Each card shows the item number and title. (Snippets can be added but make card heights inconsistent, so omitted for initial simplicity).
+
+Clicking any card opens a modal (popup window).
+
+The modal displays the full details (number, title, full text) of the clicked item.
+
+The search bar filters the cards shown in the grid.
+
+Highlighting applies to titles in the grid and to both title and details within the modal.
+
+Updated Code (Save as .html and open in browser):
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSK Differential Diagnosis (Card Grid) - Dr. Hisham AlKhatib</title>
+    <style>
+        :root {
+            --primary-color: #2c5d92; /* Professional Blue */
+            --secondary-color: #eaf1f8; /* Light Blue */
+            --text-color: #333;
+            --border-color: #d8dee4; /* Slightly softer border */
+            --highlight-bg: #ffdd57; /* Soft Yellow for highlighting */
+            --card-bg: #ffffff;
+            --card-hover-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+            --card-shadow: 0 3px 10px rgba(0, 0, 0, 0.07);
+            --modal-overlay-bg: rgba(0, 0, 0, 0.65);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: var(--text-color);
+            direction: ltr;
+        }
+
+        .app-container {
+            max-width: 1200px; /* Wider container for grid */
+            margin: 30px auto;
+            padding: 25px 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            background-color: #fff; /* Add background if container isn't white */
+             border-radius: 8px 8px 0 0; /* Match potential container radius */
+             padding-top: 20px;
+             box-shadow: var(--card-shadow);
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 1.8em;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+         .header .prepared-by {
+             font-size: 0.95em;
+             color: #777;
+             margin-top: 10px;
+         }
+
+        .search-container {
+            margin: 25px 0; /* Space above and below search */
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 15px;
+            background-color: #fff;
+             border-radius: 8px;
+             box-shadow: var(--card-shadow);
+        }
+
+        #searchInput {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 1.05em;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        #searchInput:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 6px rgba(44, 93, 146, 0.2);
+        }
+        #resetBtn {
+             padding: 9px 18px;
+             background-color: #6c757d;
+             color: white;
+             border: none;
+             border-radius: 18px;
+             font-size: 0.9em;
+             cursor: pointer;
+             transition: background-color 0.3s ease;
+             white-space: nowrap;
+         }
+         #resetBtn:hover { background-color: #5a6268; }
+
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            /* Responsive columns: fit cards >= 280px wide, let them grow */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px; /* Spacing between cards */
+            padding-top: 10px; /* Space below search */
+        }
+
+        /* Individual Card Item */
+        .card-item {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px 20px;
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex; /* Use flex for better alignment inside card */
+            flex-direction: column; /* Stack number/title */
+            min-height: 100px; /* Minimum height for consistency */
+            justify-content: center; /* Center content vertically */
+        }
+        .card-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        .card-item .item-number {
+             background-color: var(--secondary-color);
+             color: var(--primary-color);
+             font-weight: bold;
+             border-radius: 4px;
+             padding: 3px 7px;
+             font-size: 0.85em;
+             display: inline-block; /* Allow width to fit content */
+             margin-bottom: 10px; /* Space below number */
+             align-self: flex-start; /* Align number to the start */
+        }
+        .card-item .item-title-text {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1.05em;
+             line-height: 1.4;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-overlay-bg);
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 1000;
+            opacity: 0; /* Start transparent */
+             visibility: hidden; /* Start hidden */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            display: flex; /* Use flex to center */
+            opacity: 1;
+             visibility: visible;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            max-width: 800px; /* Max width of modal */
+            width: 90%; /* Responsive width */
+            max-height: 85vh; /* Max height */
+            overflow-y: auto; /* Scroll inside modal if needed */
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transform: scale(0.95); /* Start slightly smaller */
+            transition: transform 0.3s ease;
+        }
+         .modal-overlay.visible .modal-content {
+             transform: scale(1); /* Scale to full size when visible */
+         }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #eee;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            line-height: 28px; /* Center the 'X' */
+             text-align: center;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #e04141;
+            color: white;
+        }
+
+        .modal-content .detail-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+             padding-bottom: 10px;
+             border-bottom: 1px solid var(--border-color);
+             display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+         .modal-content .detail-title .item-number {
+             background-color: var(--secondary-color);
+             color: var(--primary-color);
+             font-weight: bold;
+             border-radius: 6px;
+             min-width: 28px;
+             padding: 3px 6px;
+             display: inline-flex;
+             justify-content: center;
+             align-items: center;
+             font-size: 0.75em; /* Smaller number in modal title */
+             flex-shrink: 0;
+         }
+
+        .modal-content .detail-text {
+            font-size: 1em;
+            line-height: 1.7;
+            color: #333;
+            text-align: justify;
+        }
+
+
+        /* Highlighting & No Results */
+        .highlight {
+            background-color: var(--highlight-bg);
+            font-weight: 600;
+            padding: 1px 3px;
+            border-radius: 3px;
+            box-shadow: 0 0 0 1px var(--highlight-bg);
+        }
+        .no-results {
+            grid-column: 1 / -1; /* Span all columns */
+            text-align: center;
+            padding: 30px;
+            color: #777;
+            font-style: italic;
+            font-size: 1.1em;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        /* Responsive adjustments */
+         @media (max-width: 992px) {
+             .card-grid {
+                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                 gap: 20px;
+             }
+             .app-container { padding: 20px; }
+         }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5em; }
+             .search-container { flex-direction: column; align-items: stretch; gap: 10px; }
+             .card-grid {
+                 grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                 gap: 15px;
+             }
+             .card-item { padding: 15px; min-height: 80px; }
+             .modal-content { padding: 25px; }
+             .modal-content .detail-title { font-size: 1.4em; }
+             .modal-content .detail-text { font-size: 0.95em; text-align: left; }
+        }
+         @media (max-width: 480px) {
+             .card-grid { grid-template-columns: 1fr; } /* Single column */
+             .header h1 { font-size: 1.3em; }
+             .app-container { padding: 15px; }
+             .card-item .item-title-text { font-size: 1em; }
+         }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="header">
+            <h1>MSK Differential Diagnosis</h1>
+            <p class="prepared-by">Prepared by Dr. Hisham AlKhatib, Consultant Radiologist</p>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search keywords (e.g., lytic, spine, RA, periostitis)...">
+             <button id="resetBtn" title="Reset Search">Clear</button>
+        </div>
+
+        <div class="card-grid" id="cardGrid">
+            <!-- Cards will be populated here -->
+             <div id="noResultsMessage" class="no-results" style="display: none;">
+                 No items match your search criteria.
+             </div>
+        </div>
+
+    </div> <!-- End App Container -->
+
+    <!-- Modal Structure -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content" id="modalContent">
+            <button class="modal-close" id="modalClose" title="Close">×</button>
+            <!-- Modal details will be populated here -->
+            <h2 class="detail-title" id="modalTitle"></h2>
+            <p class="detail-text" id="modalDetails"></p>
+        </div>
+    </div>
+
+
+    <script>
+        // MSK Differential Diagnosis Data (English)
+        const ddxData = [
+             // ... (Keep the same ddxData array from the previous English version) ...
+             { number: "01", title: "Bubbly or lytic lesions (FEGNOMASHIC)", details: "fibrous dysplasia (no periosteal reaction, mention adamantinoma if in tibia or jaw; pelvis, proximal femur, ribs, skull, long lesion in long bone, expansile medullary lytic lesion, ground glass, well-defined sclerotic margin, bowing deformities, base of skull sclerotic, hot on bone scan, cherubism in mandible and maxilla, craniofacial in facial and frontal bones, pseudoarthrosis of tibia, Mccune Albright is polyostotic FD with café-au-lait spots with precocious puberty), enchondroma (must have calcifications except in phalanges, no periostitis; tubular bones, chondroid calcifications, endosteal scalloping, pain is malignant, Ollier’s enchondromatosis, Mafucci’s enchondromatosis with multiple ST hemangiomas), EG (age<30; lytic lesion can look aggressive, skull lesion beveled-edge appearance, sequestrum, floating tooth, vertebra plana, lung dz, pituitary, RES), GCT (epiphyses must be closed, must be epiphyseal and abut the articular surface in long bones, eccentric, well-defined but nonsclerotic border except in flat bones; long tubular bone > spine or sacrum, 50% at knee), NOF (age<30, no periostitis, cortically based; metaphysis), osteoblastoma (mention with ABC even if age>30, especially in posterior elements of spine), mets (age>40; renal and thyroid), myeloma (age>40; plasmacytoma in ilium and sacrum, cold on bone scan; vertebral bodies destroyed before pedicles, axial skeleton, long bones, punched-out lytic lesions, generalized osteopenia, skeletal survey more sensitive), ABC (age<30, expansile, eccentric, pain, fluid-fluid levels on MR; posterior elements of spine, metaphysis of long bones, pelvis), SBC (age<30, central, no periostitis; proximal humerus, proximal femur, calcaneus, fallen fragment sign), HPT (brown tumor, must have other evidence of HPT), infection (always mention), chondroblastoma (age<30, epiphyseal), chondromyxoid fibroma (mention with NOF, no calcified matrix)" },
+            { number: "02", title: "Automatics (must mention in every case)", details: "age<30 – infection, EG; age>40 – infection, mets, myeloma" },
+            { number: "03", title: "Multiple lytic lesions (FEEMHI)", details: "fibrous dysplasia, enchondromas, EG, mets, myeloma, HPT, infection" },
+            { number: "04", title: "Rib lesions (FAME)", details: "fibrous dysplasia, ABC, mets, myeloma, enchondroma, EG" },
+            { number: "05", title: "Lytic epiphyseal lesion", details: "(also apophyseal, carpal and tarsal bones, patella): chondroblastoma, infection, EG, GCT, geode; age>40 – add mets and myeloma and remove chondroblastoma" },
+            { number: "06", title: "Lytic lesion in posterior elements of spine (OAT)", details: "osteoblastoma, ABC, TB" },
+            { number: "07", title: "Exclude these lytic lesions if age>30 (CANES)", details: "chondroblastoma, ABC, NOF, EG, SBC" },
+            { number: "08", title: "Lesions that have no pain or periostitis (FENS)", details: "fibrous dysplasia, enchondroma, NOF, SBC" },
+            { number: "09", title: "Bony sequestrum (FILE)", details: "fibrosarcoma, infection, lymphoma, EG, osteoid osteoma (mimic)" },
+            { number: "10", title: "Geodes (CARD)", details: "CPPD, AVN, RA, DJD, trauma" },
+            { number: "11", title: "Sclerotic lesion age 20-40", details: "chondroblastoma, ABC, NOF, EG, SBC, fibrous dysplasia, infection, HPT (healing brown tumor), osteoid osteoma, giant bone island; age>40 – mets" },
+            { number: "12", title: "Endosteal scalloping", details: "fibrous dysplasia, enchondroma, cartilaginous tumor" },
+            { number: "13", title: "Wide zone of transition (permeative)", details: "mets + myeloma, reticulum cell sarcoma, Ewing’s sarcoma, infection, EG" },
+            { number: "14", title: "Malignant bone tumors", details: "age<30 – Ewing’s sarcoma (diaphysis long bones > flat bones, aggressive, ST mass typical, medullary location), osteosarcoma (poorly defined intramedullary metaphyseal mass lesion extends through cortex, osteoid or chondroid matrix, aggressive periosteal reaction with Codman triangle or sunburst pattern, telangiectatic form purely lytic and simulates ABC, parosteal form is low-grade and seen in posterior distal femur with more mature ossification centrally), mets in children (neuroblastoma, leukemia/lymphoma, Wilm’s); age>40 – mets + myeloma, chondrosarcoma (pain, long bones, pelvis, ribs, clivus, most metaphyseal); age 30-40 – GCT (if lung mets or recurrence), parosteal osteosarcoma (densest calcification is central), fibrosarcoma (almost always lytic), malignant fibrous histiocytoma (mention with fibrosarcoma, aggressive, large soft tissue mass), reticulum cell sarcoma (primary lymphoma of bone, looks like Ewing’s sarcoma, often asx)" },
+            { number: "15", title: "Permeative lesion in child", details: "Ewing’s sarcoma, infection, EG" },
+            { number: "16", title: "Permeative lesion in older pt", details: "infection, mets, myeloma, malignant fibrous histiocytoma, reticulum cell sarcoma" },
+            { number: "17", title: "Soft tissue tumors", details: "MFH, liposarcoma (may or may not have fat), synovial sarcoma (usu extraarticular), synovial osteochondromatosis (multiple Ca++ loose bodies, jt effusion, erosions, destruction; knee, hip, elbow; mimics PVNS if not Ca++), pigmented villonodular synovitis (hemosiderin deposits lining synovium, erosions, jt destruction, no joint space narrowing), hemangiomas (phleboliths, cortical holes, striated vertebral body)" },
+            { number: "18", title: "Malignant transformation of bony lesions", details: "fibrous dysplasia – fibrosarcoma, OSA, MFH; Paget’s – OSA; osteomyelitis with draining sinus – SCC; radiation – OSA, chondrosarcoma, MFH; bone infarct – fibrosarcoma, MFH; Ollier’s – chondrosarcoma; Maffucci’s – chondrosarcoma; osteochondroma – chondrosarcoma" },
+            { number: "19", title: "Cortical holes (pseudopermeative lesion)", details: "osteoporosis (metacarpal cortex less then ¼ to 1/3 of metacarpal), radiation, hemangiomas" },
+            { number: "20", title: "Focal cortical thickening", details: "stress fracture, infection, osteoid osteoma" },
+            { number: "21", title: "Mets to bone (PBKTL)", details: "P – mostly blastic, B – mixed, K – purely lytic, TL – mostly lytic" },
+            { number: "22", title: "Hallmarks of DJD", details: "joint space narrowing (asymmetric), subchondral sclerosis, osteophytes, subchondral cysts, lack of osteoporosis or erosions" },
+            { number: "23", title: "Joints that exhibit erosions with OA", details: "TMJ, SI, AC, pubic symphysis" },
+            { number: "24", title: "Hallmarks of RA", details: "soft tissue swelling, periarticular and diffuse osteoporosis, joint space narrowing, marginal erosions (including ulnar styloid and triquetrum, proximal distribution (hands), bilaterally symmetric, subchondral cysts, ulnar deviation, carpal instability, rotator cuff tear, distal clavicle resorption, axial migration, protrusio acetabuli, A-a subluxation, may see rice bodies in synovial inflammation; secondary DJD – severe JSN out of proportion to sclerosis and osteophytes" },
+            { number: "25", title: "Hallmarks of HLA-B27 spondyloarthropathies", details: "bony ankylosis, proliferative new bone formation, predominantly axial (spinal) involvement, syndesmophytes" },
+            { number: "25-SI", title: "Sacroiliac joint involvement (part of 25)", details: "AS (bamboo spine, Andersen lesion and pseudoarthrosis), IBD (like AS), psoriasis (distal predominance, sausage digit, pencil-in-cup, acroosteolysis, proliferative erosions, STS, periostitis, bony ankylosis, arthritis mutilans deformities, heel spur with fuzzy margins), Reiter’s syndrome (like psoriasis but feet>hands, IP joint great toe), DJD, infection, gout, HPT; bilateral + symmetric SI jt + marginal symmetric syndesmophytes – usually AS or IBD; unilateral or asymmetric SI jt – exclude AS and IBD and consider psoriasis and Reiter’s" },
+            { number: "26", title: "Large joint involvement", details: "DJD (superolateral migration in hips, medial compartment of knee most affected), RA (axial migration in hips), CPPD, AS (resembles RA), PVNS, synovial osteochondromatosis, infection (Staph aureus most common, Salmonella in SCD, joint effusion, joint destruction, crosses disc space in spine, periosteal reaction, bone destruction, Brodie’s abscess is well-defined lytic lesion with thick sclerotic border, sequestrum), amyloidosis (nodular synovitis with erosions resembling RA), ochronosis (DSN with vacuum, disc calcifications, generalized osteoporosis, secondary OA)" },
+            { number: "27", title: "Arthropathy distribution in hands and wrists", details: "distal – psoriasis, Reiter’s syndrome, osteoarthritis; proximal – RA, CPPD" },
+            { number: "28", title: "Bilateral symmetry of arthropathy", details: "primary OA (middle-aged women in hands only, 1st CMC, gull-wing erosive pattern), RA, multicentric reticulohistiocytosis (multiple erosions predominantly in phalanges without osteoporosis)" },
+            { number: "29", title: "Monoarticular arthritis (CHRIST)", details: "crystal arthropathies, hemophilia, RA, infection, synovial (synovial osteochondromatosis, PVNS), trauma" },
+            { number: "30", title: "Normal mineralization", details: "DJD, CPPD, gout, multicentric reticulohistiocytosis, PVNS, synovial osteochondromatosis" },
+            { number: "31", title: "Hallmarks of gout", details: "well-defined erosions often with sclerotic borders or overhanging edges, soft tissue nodules that calcify in presence of renal failure, random distribution in hands without marked osteoporosis, podagra (1st MTP jt), often have chondrocalcinosis, preserved joint space, olecranon/prepatellar bursitis" },
+            { number: "32", title: "Hallmarks of CPPD", details: "pain, cartilage calcification (knee, triangular fibrocartilage of wrist, pubic symphysis), joint destruction from secondary DJD (shoulder, elbow, radiocarpal jt, patellofemoral jt), subchondral cysts, can present as pseudogout" },
+            { number: "33", title: "CPPD-associated disorders", details: "primary HPT, gout, hemochromatosis (DJD 2nd-4th MCP jts with squaring of metacarpal heads with drooping osteophytes, generalized osteoporosis)" },
+            { number: "34", title: "Hallmarks of collagen vascular diseases", details: "osteoporosis and soft tissue wasting in the hands, erosions generally not present; SLE - ulnar deviation of phalanges, nonerosive, resembles Jaccoud’s arthropathy; scleroderma - ST calcifications, acroosteolysis, severe resorption of 1st CMC with radial subluxation of 1st metacarpal; dermatomyositis - widespread ST calcifications, radial subluxation of IP joint of thumb" },
+            { number: "35", title: "Charcot joint", details: "joint destruction, dislocation, heterotopic new bone; causes – DM, spinal cord injury, alcohol abuse, myelomeningocele/syringomyelia" },
+            { number: "36", title: "Epiphyseal enlargement and gracile diaphyses", details: "hemophilia (hemarthrosis, secondary OA, widened intercondylar notch, enlarged trochlear notch, subchondral cysts; pseudotumor – large ST mass with adjacent bone destruction, hematoma, Ca++ common), JRA (diffuse ankylosis of posterior articular joints, periosteal new bone formation, STS, short metacarpals), paralysis" },
+            { number: "37", title: "Hallmarks of AVN", details: "increased bone density at otherwise nl jt; joint effusion, patchy or mottled density, subchondral lucency, articular surface collapse and joint fragmentation, low signal serpiginous border on MR; causes – trauma, steroids, sickle cell anemia, renal disease, collagen vascular diseases, alcoholism, idiopathic; OCD at lateral aspect of medial femoral condyle, talus, capitellum; SONK in elderly at weight bearing medial femoral condyle" },
+            { number: "38", title: "Hallmarks of osteomalacia", details: "osteopenia, Looser’s fxs (femur, pelvis, scapula), epiphyseal flaring and irregularity, bending of long bones" },
+            { number: "39", title: "Hallmarks of HPT", details: "subperiosteal resorption in radial aspect of middle phalanges, medial aspect of proximal tibia, SI jts, distal clavicle resorption, rugger jersey spine, brown tumors, sclerosis, salt and pepper skull, ST calcifications, chondrocalcinosis" },
+            { number: "40", title: "Dense bones (3MsPROOF)", details: "renal osteodystrophy (2o HPT, osteomalacia), sickle cell disease (bone infarcts, dactylitis, H shaped or fish vertebrae, AVN hip, hair on end skull, osteomyelitis, spleen autoinfarction, cholelithiasis, papillary necrosis), myelofibrosis (splenomegaly and extramedullary hematopoeisis), osteopetrosis (“bone in bone, sandwich vertebrae”, erlenmeyer flask, dense base of skull), pyknodysostosis (distal phalanges pointed and dense, tufts absent, widened sutures, straight angle mandible), mastocytosis (thickened SB folds with nodules), mets (breast and prostate), Paget’s disease (bony enlargement, commonly in pelvis with thickened iliopectineal line, lytic phase with flame-shaped or blade of grass leading edge that always starts at end of bone except in tibia, cotton wool skull, 2o OSA, thickened trabeculae, protrusio acetabuli, picture frame vertebral body, ivory vertebral body, osteoporosis circumscripta, diploic widening, bowing of bones), athletes, fluorosis (ligamentous calcification, sacrotuberous ligament)" },
+            { number: "41", title: "Periostitis without underlying bony lesion", details: "trauma, HPO (painful periostitis of long tubular bones; causes - lung cancer, benign fibrous tumor of pleura, mets, mesothelioma, chronic pulmonary infection), venous stasis (lower extremities), thyroid acropachy (occurs post thyroidectomy, metacarpals and phalanges, esp ulnar aspect of 5th metacarpal), pachydermoperiostosis (like HPO but rarely painful)" },
+            { number: "42", title: "Periosteal reaction in children (SCALP)", details: "scurvy (dense metaphyseal lines), Caffey’s (tibia, ulna, mandible), trauma, hypervitaminosis, leukemia, lymphoma, neuroblastoma, infection, physiologic, prostaglandins" },
+            { number: "43", title: "“Don’t Touch” lesions", details: "posttraumatic lesions – myositis ossificans (peripheral circumferential calcification with lucent center), avulsion injury (cortical irregularity and periostitis at ligament or tendon insertion site, lesser trochanter avulsion suggests mets), cortical desmoid (posteromedial epicondyle of femur), geodes, discogenic vertebral sclerosis (variant of Schmorl’s node), fracture (if not immobilized), pseudodislocation of humerus (inferior subluxation from fracture and hemarthrosis); normal variants – dorsal defect of patella (lytic defect upper outer quadrant), pseudocyst of humerus (lytic area at greater tuberosity), os odontoideum (smooth well-corticated inferior border of dens and hypertrophied densely corticated anterior arch of C1); benign lesions – NOF, bone islands (asymptomatic, usually oblong with long axis in axis of stress, trabeculae extend into nl bone spiculated), SBC (do not prophylactically curettage if in calcaneus), pseudocyst of calcaneus, bone infarct (dense serpiginous border), Pitt’s pit (lytic lesion at lateral aspect of femoral neck); osteoma (facial bones, skull, Gardner’s)" },
+            { number: "44", title: "Miscellaneous bone lesions", details: "achondroplasia (shortened long bones with narrowing of interpedicular distance in caudal direction, posterior vertebral body scalloping), melorrheostosis (thickened cortical new bone like “dripping candle wax”, follows sclerotome), mucopolysaccharidoses (flattened vertebral bodies with anterior beak, flared iliac wings and broad femoral necks, pointed proximal 5th metacarpal base with notch appearance to ulnar aspect, posterior vertebral body scalloping), multiple hereditary exostosis (osteochondromas, metaphyseal, lesion grows away from joint, undertubulation, knees, proximal femur, axial more prone to degeneration), osteoid osteoma (pain, age<30, lucent nidus surrounded by reactive sclerosis in cortex of long bone, can be on concave side of painful scoliosis, “double density” sign on bone scan), osteopathia striata (multiple 2-3mm thick linear bands of sclerotic bone aligned parallel to long axis of bone, asymptomatic), osteopoikilosis (hereditary, asymptomatic, multiple small sclerotic densities on ends of long bones and pelvis), sarcoid (“lace-like” pattern of bony destruction in hands), SCFE (overweight teenage boys, line through lateral femoral neck does not intersect with portion of epiphysis, can be complication of hypothyroidism), DISH (flowing anterior osteophytes at least 4 contiguous vertebral bodies without DSN or sclerosis), reflex sympathetic dystrophy (=Sudeck’s atrophy, severe patchy osteoporosis and STS following minor trauma), acromegaly (skull thickening, enlarged sinuses and sella turcica, hypertrophied terminal tufts with spade appearance, posterior vertebral body scalloping, elongated and widened vertebral bodies, heel pad thickening), transient osteoporosis of the hip (pain, self-limited, low T1 signal, hot on bone scan), tarsal coalition (talar beak, sclerosis of middle facet of subtalar joint), intraosseous lipoma (asx, proximal femur, fibula, calcaneus, may have central calcified nidus); OPLL (C-spine); Poland’s syndrome (absence of pectoral muscles and syndactyly); congenital rubella (“celery-stalk” metaphysis)" },
+            { number: "45", title: "Dense base of skull", details: "fibrous dysplasia, Engelmann’s disease (kids, cortical thickening midshaft of long bones involving both periosteal and endosteal surfaces), Von Buchem’s disease (adults), Paget’s disease, meningioma, pyknodysostosis, osteopetrosis" },
+            { number: "46", title: "Lytic skull lesion", details: "SCD, HPT, Paget’s, FD, TS, infection, mets, myeloma, EG, epidermoid, hemangioma" },
+            { number: "46-Wormian", title: "Wormian bones (PORKCHOPS) (related to skull)", details: "pyknodysostosis, OI, cleidocranial dysplasia (absent distal clavicles, supernumerary teeth), hypothyroidism, pachydermoperiostosis, Down’s" },
+            { number: "47", title: "Atlanto-axial subluxation (POOF)", details: "RA, trauma, Down’s, Morquio’s" },
+            { number: "48", title: "High-riding shoulder", details: "RA, CPPD, torn rotator cuff" },
+            { number: "49", title: "Distal clavicle resorption", details: "RA, HPT, osteomyelitis, weightlifting, trauma, scleroderma" },
+            { number: "50", title: "Inferior rib resorption", details: "vascular impression (coarctation), HPT, NF" },
+            { number: "51", title: "Madelung’s deformity (HITDOC)", details: "Hurler’s, infection, trauma, dyschondrosteosis, osteochondromatosis, chromosomal anomalies (Turner’s)" },
+            { number: "52", title: "Radial hypoplasia", details: "VACTERL, Holt-Oram syndrome, thrombocytopenia-absent radius syndrome" },
+            { number: "53", title: "Ulnar variance", details: "negative – Kienbock’s; positive – TFCC tear, ulnar impingement syndrome" },
+            { number: "54", title: "Distal tuft resorption (PINCH)", details: "scleroderma, psoriasis, Raynaud’s, vascular disease, frostbite, electrical burns, tabes dorsalis, HPT, pyknodysostosis; band-like – polyvinyl chloride, Hajdu-Cheney syndrome" },
+            { number: "55", title: "Lytic finger", details: "enchondroma, glomus tumor (pain, terminal phalanx), epidermoid inclusion cyst, mets, infection, sarcoid, erosive arthropathy" },
+            { number: "56", title: "Polydactyly", details: "familial, chondroectodermal dysplasia, trisomy 13, Meckel-Gruber" },
+            { number: "57", title: "Short 4th metacarpal", details: "idiopathic, pseudohypoparathyroid (brachydactyly), pseudopseudohypoparathyroid, Turner’s, basal cell nevus syndrome (mandibular cysts, dural calcifications)" },
+            { number: "58", title: "Sclerotic vertebral body (LIMMP)", details: "lymphoma, infection, mets, myeloma, Paget’s" },
+            { number: "59", title: "Vertebral body lesion", details: "Paget’s, osteoporosis, HPT, LIMP (Lymphoma, Infection, Mets, Myeloma), hemangioma, SCD, HLA-B27, EG, GCT, osteoblastoma, ABC, TB, osteoid osteoma" },
+            { number: "60", title: "Platyspondyly", details: "diffuse - dwarf, OI, Morquio’s, epiphyseal dysplasia, Cushing’s; solitary or multifocal – EG, infection, trauma, mets, myeloma, lymphoma, leukemia, SCD, osteonecrosis (with vacuum disc phenomenon)" },
+            { number: "61", title: "Anterior vertebral body beaking", details: "Morquio’s (middle), others (inferior) – Hurler, achondroplasia, Downs" },
+            { number: "62", title: "Posterior vertebral scalloping", details: "dural ectasia (NF, Marfan’s, Ehlers-Danlos), syrinx, spinal canal tumor, congenital (achondroplasia, mucopolysaccharidoses, OI), acromegaly" },
+            { number: "63", title: "Posterior spinal fusion", details: "Klippel-Feil, surgical fusion, JRA, HLA-B27" },
+            { number: "64", title: "Fused vertebrae", details: "isolated, trauma, Klippel-Feil" },
+            { number: "65", title: "Lytic ilium", details: "FD, ABC, SBC, hemophilia, mets, plasmacytoma, Ewing’s sarcoma, chondrosarcoma, lymphoma" },
+            { number: "66", title: "Lytic sacrum", details: "met, chordoma (sacrum, clivus, vertebral bodies, expansile lytic lesion with large ST component and variable calcifications), plasmacytoma, chondrosarcoma, GCT" },
+            { number: "67", title: "Widened pubic symphysis", details: "bladder exstrophy, infection, mets, trauma, pregnancy" },
+            { number: "68", title: "Widened teardrop in hip", details: "infection, trauma, pigmented villonodular synovitis (erosions, preserved joint space), synovial osteochondromatosis (multiple calcified loose bodies in jt, mimics PVNS if noncalcified), AVN" },
+            { number: "69", title: "Protrusio acetabuli (PROT A)", details: "RA, trauma, Paget’s, osteomalacia, AS, IBD" },
+            { number: "70", title: "Femoral head AVN (ASEPTIC LEG)", details: "alcohol, SCD, exogenous steroids or radiation, pancreatitis, pregnancy, trauma, infection, Caisson, LCP, epiphyseal dysplasia, Gaucher’s (hepatosplenomegaly, osteopenia, AVN, Erlenmeyer flask)" },
+            { number: "71", title: "Medial tibial spur", details: "osteochrondroma, Blount’s disease, trauma" },
+            { number: "72", title: "Dense metaphyseal lines", details: "growth recovery lines, lead, healing rickets, scurvy" },
+            { number: "73", title: "Erlenmeyer flask (CHONG)", details: "craniometaphyseal dysplasia, hemoglobinopathies including SCD and thalassemia (marrow hyperplasia, hair-on-end skull, Erlenmeyer flask, extramedullary hematopoeisis), osteopetrosis, Niemann-Pick, Gaucher’s" },
+            { number: "74", title: "Gracile bones (NIMROD)", details: "NF, immobilization, muscular dystrophy, JRA, OI, dysplasias" },
+            { number: "75", title: "Bowed bones", details: "rickets, NF, OI, FD" },
+            { number: "76", title: "Soft bone", details: "Paget’s, osteogenesis imperfecta, osteomalacia, fibrous dysplasia" },
+            { number: "77", title: "Osteopenia", details: "steroids, osteoporosis, osteomalacia, multiple mieloma" },
+            { number: "78", title: "Epiphysis (Location)", details: "chondroblastoma, GCT (after physis closure), EG, chondrosarcoma" },
+            { number: "79", title: "Metaphysis (Location)", details: "osteosarcoma, parosteal sarcoma, chondrosarcoma, fibrosarcoma, NOF, GCT (before physis closure), SBC, ABC, osteochondroma" },
+            { number: "80", title: "Diaphysis (Location)", details: "myeloma, Ewing’s, reticulum cell sarcoma" },
+            { number: "81", title: "Metadiaphyseal (Location)", details: "fibrosarcoma, fibrous dysplasia, enchondroma, osteoid osteoma, chondromyxoid fibroma" },
+            { number: "82", title: "Soft tissue mass", details: "MFH, lipoma, liposarcoma, hemangioma, synovial sarcoma, nerve sheath tumor, mets, hematoma, abscess, rhabdosarcoma, leiomyosarcoma, myositis ossificans, aneurysm" },
+            { number: "83", title: "Soft tissue calcification", details: "tumoral calcinosis, synovial osteochondromatosis, ST tumor, scleroderma, dermatomyositis, myositis ossificans progressiva, HPT, metastatic calcifications, CPPD, calcium hydroxyapatite deposition, hematoma, vascular" },
+            { number: "84", title: "Tendon rupture", details: "steroids, RA, DM, HPT, gout" },
+            { number: "85", title: "Heel pad thickening (MADCOP)", details: ">25mm, myxedema, acromegaly, dilantin, callus, obesity, peripheral edema" },
+            { number: "86", title: "Periprosthetic lucency", details: "loosening, particle disease, infection" },
+            { number: "87", title: "Massive osteolysis", details: "palmar fibromatosis (Dupuytren’s contracture), Gorham’s disease (regional lysis by angiomatous tissue, tapering of remaining bone, ST atrophy), mets, aggressive primary bone or ST tumor" }
+        ];
+
+
+        // --- DOM Elements ---
+        const cardGridElement = document.getElementById('cardGrid');
+        const searchInput = document.getElementById('searchInput');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const resetBtn = document.getElementById('resetBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalContent = document.getElementById('modalContent');
+        const modalCloseBtn = document.getElementById('modalClose');
+        const modalTitleElement = document.getElementById('modalTitle');
+        const modalDetailsElement = document.getElementById('modalDetails');
+
+        let currentFilter = ''; // Store the current filter globally
+
+        // --- Functions ---
+
+        // Function to escape special characters for regex
+        function escapeRegExp(string) {
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Function to apply highlighting
+        function highlightText(text, filter) {
+            if (!filter) return text;
+            const escapedFilter = escapeRegExp(filter);
+            const regex = new RegExp(`(${escapedFilter})`, 'gi');
+            // Handle potential HTML entities in text before replacing
+             const decodedText = new DOMParser().parseFromString(text, 'text/html').body.textContent || "";
+             return decodedText.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+
+        // Function to render the card grid
+        function renderGrid(filter = '') {
+            cardGridElement.innerHTML = ''; // Clear grid
+            currentFilter = filter.trim().toLowerCase(); // Update global filter
+            let itemsFound = false;
+
+            ddxData.forEach((item, index) => {
+                const itemTitleLower = item.title.toLowerCase();
+                const itemDetailsLower = item.details.toLowerCase(); // Search details too
+                const matchesFilter = currentFilter === '' || itemTitleLower.includes(currentFilter) || itemDetailsLower.includes(currentFilter);
+
+                if (matchesFilter) {
+                    itemsFound = true;
+                    const card = document.createElement('div');
+                    card.classList.add('card-item');
+                    card.dataset.index = index; // Store original index
+
+                    const titleWithHighlight = highlightText(item.title, currentFilter);
+                    const displayItemNumber = item.number.replace(/-.*/, ''); // Clean number
+
+                    card.innerHTML = `
+                        <span class="item-number">${displayItemNumber}</span>
+                        <span class="item-title-text">${titleWithHighlight}</span>
+                    `;
+                    cardGridElement.appendChild(card);
+                }
+            });
+
+            // Append or hide the no results message
+            if (!itemsFound) {
+                noResultsMessage.style.display = 'block';
+                 // Insert noResultsMessage into the grid so it spans columns correctly
+                 cardGridElement.appendChild(noResultsMessage);
+            } else {
+                 // If the message is in the DOM from a previous search, remove it
+                 if (noResultsMessage.parentNode === cardGridElement) {
+                    cardGridElement.removeChild(noResultsMessage);
+                 }
+                 noResultsMessage.style.display = 'none';
+            }
+        }
+
+        // Function to open the modal
+        function openModal(itemIndex) {
+            const item = ddxData[itemIndex];
+            if (!item) return;
+
+            const titleWithHighlight = highlightText(item.title, currentFilter);
+            const detailsWithHighlight = highlightText(item.details, currentFilter);
+            const displayItemNumber = item.number.replace(/-.*/, ''); // Clean number
+
+            // Populate modal content - Safely set innerHTML
+             modalTitleElement.innerHTML = `<span class="item-number">${displayItemNumber}</span><span>${titleWithHighlight}</span>`;
+             modalDetailsElement.innerHTML = detailsWithHighlight;
+
+            modalOverlay.classList.add('visible');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            modalOverlay.classList.remove('visible');
+            document.body.style.overflow = ''; // Restore background scrolling
+        }
+
+        // --- Event Listeners ---
+
+        // Search input
+        searchInput.addEventListener('input', () => {
+            renderGrid(searchInput.value);
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            renderGrid();
+            searchInput.focus();
+        });
+
+        // Click on cards in the grid (using event delegation)
+        cardGridElement.addEventListener('click', (event) => {
+            const card = event.target.closest('.card-item');
+            if (card && card.dataset.index) {
+                const index = parseInt(card.dataset.index, 10);
+                if (!isNaN(index)) {
+                    openModal(index);
+                }
+            }
+        });
+
+        // Modal close button
+        modalCloseBtn.addEventListener('click', closeModal);
+
+        // Click on overlay (to close modal)
+        modalOverlay.addEventListener('click', (event) => {
+            // Only close if the click is directly on the overlay, not the content
+            if (event.target === modalOverlay) {
+                closeModal();
+            }
+        });
+
+        // Keyboard accessibility (Escape key to close modal)
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && modalOverlay.classList.contains('visible')) {
+                closeModal();
+            }
+        });
+
+        // --- Initial Render ---
+        renderGrid(); // Render the initial grid
+
+    </script>
+
+</body>
+</html>
+
+
+Key Changes for Card Grid Layout:
+
+HTML Structure:
+
+A .card-grid container is added to hold the cards.
+
+A separate .modal-overlay structure is defined (initially hidden) containing .modal-content and a .modal-close button.
+
+CSS Styling:
+
+.card-grid uses display: grid and grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); to create the responsive grid layout. gap provides spacing.
+
+.card-item styles the individual cards with background, border, shadow, padding, and hover effects. cursor: pointer indicates interactivity. Flexbox is used internally for alignment.
+
+.modal-overlay styles the full-screen semi-transparent background, using Flexbox to center the modal. It's hidden (display: none, opacity: 0) initially and shown using a .visible class.
+
+.modal-content styles the popup box itself (background, padding, max-width, max-height, overflow-y: auto).
+
+.modal-close styles the close button, typically positioned absolutely in a corner.
+
+Transitions are added to the modal overlay (opacity, visibility) and content (transform) for smoother appearance.
+
+JavaScript Logic:
+
+renderGrid() now creates div.card-item elements for each matching item and appends them to the .card-grid. It only includes the number and highlighted title on the card itself.
+
+openModal(itemIndex) fetches the full item data, populates the modalTitleElement and modalDetailsElement (applying highlighting based on currentFilter), and makes the modal visible by adding the .visible class to the overlay. It also prevents background scrolling.
+
+closeModal() hides the modal by removing the .visible class and restores background scrolling.
+
+Event listeners are set up:
+
+For the cardGridElement to detect clicks on .card-item and call openModal.
+
+For the close button and the overlay background to call closeModal.
+
+For the Escape key to also call closeModal.
+
+This card grid layout offers a more visual, less linear way to browse the topics. Let me know how this feels compared to the others!
